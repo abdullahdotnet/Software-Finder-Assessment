@@ -58,7 +58,7 @@ def extract_date_from_filename(filepath: Path) -> str | None:
     Expected format: scrape_2026-06-01.csv  →  '2026-06-01'
     Returns None if the filename doesn't match the expected pattern.
     """
-    name = filepath.stem  # e.g. 'scrape_2026-06-01'
+    name = filepath.stem  # 'scrape_2026-06-01'
     parts = name.split("_", 1)
     if len(parts) == 2:
         return parts[1]  # '2026-06-01'
@@ -66,22 +66,14 @@ def extract_date_from_filename(filepath: Path) -> str | None:
 
 
 def safe_read_csv(filepath: Path) -> pd.DataFrame | None:
-    """
-    Try to read a CSV file as safely as possible.
-    Handles common real-world problems:
-      - Different encodings (utf-8, latin-1, cp1252)
-      - Extra/missing columns vs the schema
-      - Completely empty files
-      - Files with only a header row
-    Returns a DataFrame, or None if the file cannot be read at all.
-    """
+
     encodings_to_try = ["utf-8", "latin-1", "cp1252"]
 
     for encoding in encodings_to_try:
         try:
             df = pd.read_csv(
                 filepath,
-                dtype=str,           # read everything as string - we clean later
+                dtype=str,           # read everything as string - clean later
                 encoding=encoding,
                 on_bad_lines="warn", # skip malformed rows but keep going
                 skip_blank_lines=True,
@@ -109,15 +101,7 @@ def safe_read_csv(filepath: Path) -> pd.DataFrame | None:
 
 
 def normalise_columns(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
-    """
-    Make column names consistent regardless of what the file actually contains.
-    Steps:
-      1. Strip whitespace and lowercase all column names
-      2. Log any columns present in file but NOT in schema (extra cols)
-      3. Log any columns in schema but NOT in file (missing cols)
-      4. Add missing columns as NaN so every row has the same shape
-      5. Keep extra columns - we don't silently drop data
-    """
+
     # Clean up column names
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
@@ -173,7 +157,7 @@ def run_ingestion():
     log.info(f"Output database: {DB_PATH}")
     log.info("=" * 60)
 
-    # ── 1. Find all CSV files ──────────────────────────────────
+    # 1. Find all CSV files
     if not DAILY_DIR.exists():
         log.error(f"daily/ folder not found at {DAILY_DIR.resolve()}")
         log.error("Make sure you run this script from your project root folder.")
@@ -187,7 +171,7 @@ def run_ingestion():
 
     log.info(f"Found {len(csv_files)} CSV files to process")
 
-    # ── 2. Read and combine all files ─────────────────────────
+    # 2. Read and combine all files
     all_frames = []
     files_ok = 0
     files_failed = 0
@@ -219,13 +203,13 @@ def run_ingestion():
         log.error("No data loaded at all - nothing to write to database.")
         sys.exit(1)
 
-    # ── 3. Combine into one DataFrame ─────────────────────────
+    # 3. Combine into one DataFrame
     log.info("Combining all files into a single table...")
     combined = pd.concat(all_frames, ignore_index=True)
     log.info(f"Total rows combined: {len(combined)}")
     log.info(f"Total columns      : {list(combined.columns)}")
 
-    # ── 4. Basic null report before writing ───────────────────
+    # 4. Basic null report before writing
     log.info("Null counts per column:")
     for col in combined.columns:
         null_count = combined[col].isna().sum()
@@ -233,7 +217,7 @@ def run_ingestion():
         if null_count > 0:
             log.info(f"  {col:<20} {null_count:>6} nulls  ({pct:.1f}%)")
 
-    # ── 5. Write to DuckDB ────────────────────────────────────
+    # 5. Write to DuckDB
     log.info(f"Writing to DuckDB: {DB_PATH}")
 
     con = duckdb.connect(DB_PATH)
@@ -258,7 +242,7 @@ def run_ingestion():
     else:
         log.info("Row count verified OK.")
 
-    # ── 6. Preview ────────────────────────────────────────────
+    # 6. Preview
     log.info("Sample of first 3 rows in DB:")
     sample = con.execute("SELECT * FROM raw_scrape LIMIT 3").df()
     log.info(f"\n{sample.to_string()}")
