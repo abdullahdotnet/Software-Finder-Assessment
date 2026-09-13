@@ -1,1 +1,13 @@
+# Virtual environment
 venv/
+
+# Raw data files
+daily/
+vendor_reference.csv
+README_DATA.txt
+
+# Generated outputs (recreated by running the pipeline)
+scrape.duckdb
+logs/
+
+de-assessment-candidate-brief-1-.pdf.pdf
