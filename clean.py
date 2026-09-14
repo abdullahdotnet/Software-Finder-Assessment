@@ -10,9 +10,9 @@ import logging
 import sys
 from pathlib import Path
 
-DB_PATH = "scrape.duckdb"
-LOG_DIR = Path("logs")
-LOG_FILE = LOG_DIR / "clean.log"
+db_path = "scrape.duckdb"
+log_dir = Path("logs")
+log_file = log_dir / "clean.log"
 
 CATEGORY_MAP = {
     "legal": "Legal",
@@ -28,12 +28,12 @@ CATEGORY_MAP = {
 
 NULL_STRINGS = {"nan", "none", "null", "n/a", "na", "nil", "","-"}
 
-LOG_DIR.mkdir(exist_ok=True)
+log_dir.mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.FileHandler(log_file, encoding="utf-8"),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -103,7 +103,6 @@ def apply_cleaning(df: pd.DataFrame) -> pd.DataFrame:
     total = len(df)
     log.info(f"cleaning {total:,} rows")
 
-    # header rows that got scraped in as data - "category" as a category value etc
     before = len(df)
     df = df[
         (df["category"] != "category")
@@ -175,16 +174,16 @@ def run_cleaning():
     log.info("CLEANING START")
     log.info("=" * 60)
 
-    con = duckdb.connect(DB_PATH)
-    df = con.execute("SELECT * FROM raw_scrape").df()
+    con = duckdb.connect(db_path)
+    df = con.execute("select * from raw_scrape").df()
     log.info(f"loaded {len(df):,} rows from raw_scrape")
 
     df_clean = apply_cleaning(df)
     print_summary(df_clean)
 
-    con.execute("DROP TABLE IF EXISTS clean_scrape")
-    con.execute("CREATE TABLE clean_scrape AS SELECT * FROM df_clean")
-    db_count = con.execute("SELECT COUNT(*) FROM clean_scrape").fetchone()[0]
+    con.execute("drop table if exists clean_scrape")
+    con.execute("create table clean_scrape as select * from df_clean")
+    db_count = con.execute("select count(*) from clean_scrape").fetchone()[0]
     log.info(f"wrote {db_count:,} rows to clean_scrape")
     con.close()
 

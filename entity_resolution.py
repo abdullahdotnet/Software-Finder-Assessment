@@ -1,5 +1,4 @@
 """
-Stage 3 - entity resolution.
 Collapses clean_scrape rows down to one row per real company.
 
 Priority order: exact phone_clean match, then exact domain match, then a fuzzy
@@ -20,20 +19,19 @@ from difflib import SequenceMatcher
 import duckdb
 import pandas as pd
 
-DB_PATH = "scrape.duckdb"
-OUTPUT_CSV = "entity_map.csv"
-LOG_DIR = Path("logs")
-LOG_FILE = LOG_DIR / "entity_resolution.log"
+db_path = "scrape.duckdb"
+output_csv = "entity_map.csv"
+log_dir = Path("logs")
+log_file = log_dir / "entity_resolution.log"
 
-# "Cedar FinHub" vs "Cedar Fin Hub" scores ~0.96 here, which is why 0.90 was picked
-NAME_SIMILARITY_THRESHOLD = 0.90
+name_similarity_threshold = 0.90
 
-LOG_DIR.mkdir(exist_ok=True)
+log_dir.mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.FileHandler(log_file, encoding="utf-8"),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -72,7 +70,7 @@ def fuzzy_group_names(names: pd.Series, next_id: int):
     clusters = []  # (representative_name, entity_id)
     for idx, name in names.items():
         found = next(
-            (eid for rep, eid in clusters if SequenceMatcher(None, name, rep).ratio() >= NAME_SIMILARITY_THRESHOLD),
+            (eid for rep, eid in clusters if SequenceMatcher(None, name, rep).ratio() >= name_similarity_threshold),
             None,
         )
         if found is None:
@@ -172,7 +170,7 @@ def run_entity_resolution():
     log.info("ENTITY RESOLUTION START")
     log.info("=" * 60)
 
-    con = duckdb.connect(DB_PATH)
+    con = duckdb.connect(db_path)
     df = con.execute("SELECT * FROM clean_scrape").df()
     log.info(f"loaded {len(df):,} rows from clean_scrape")
 
@@ -197,16 +195,16 @@ def run_entity_resolution():
                   f"| {row['categories']} | {row['n_raw_rows']} rows")
 
     output_cols = ["entity_id", "canonical_name", "canonical_phone", "categories", "n_raw_rows"]
-    entity_map[output_cols].to_csv(OUTPUT_CSV, index=False)
-    log.info(f"wrote {OUTPUT_CSV} ({len(entity_map):,} entities)")
+    entity_map[output_cols].to_csv(output_csv, index=False)
+    log.info(f"wrote {output_csv} ({len(entity_map):,} entities)")
 
     con.execute("DROP TABLE IF EXISTS entity_map")
     con.execute("CREATE TABLE entity_map AS SELECT * FROM entity_map")
     con.close()
 
-    log.info("=" * 60)
+    log.info("============================")
     log.info("ENTITY RESOLUTION COMPLETE")
-    log.info("=" * 60)
+    log.info("============================")
 
 
 if __name__ == "__main__":

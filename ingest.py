@@ -210,15 +210,15 @@ def run_ingestion():
     con = duckdb.connect(db_path)
 
     # Drop and recreate table so re-runs are safe
-    con.execute("DROP TABLE IF EXISTS raw_scrape")
+    con.execute("drop table if exists raw_scrape")
 
     con.execute("""
-        CREATE TABLE raw_scrape AS
-        SELECT * FROM combined
+        create table raw_scrape AS
+        select * from combined
     """)
 
     # Verify row count in DB matches what we loaded
-    db_count = con.execute("SELECT COUNT(*) FROM raw_scrape").fetchone()[0]
+    db_count = con.execute("select count(*) from raw_scrape").fetchone()[0]
     log.info(f"Rows written to raw_scrape table: {db_count}")
 
     if db_count != len(combined):
@@ -231,7 +231,7 @@ def run_ingestion():
 
     # 6. Preview
     log.info("Sample of first 3 rows in DB:")
-    sample = con.execute("SELECT * FROM raw_scrape LIMIT 3").df()
+    sample = con.execute("select * from raw_scrape limit 3").df()
     log.info(f"\n{sample.to_string()}")
 
     con.close()
