@@ -2,26 +2,34 @@
 
 42 files, 2026-06-01 to 2026-07-12, 245,169 raw rows.
 
+---
+
 | # | Issue | First seen | Scope | How detected | Pipeline handling | Downstream risk |
 |---|---|---|---|---|---|---|
-| 1 | Category labels inconsistent — `Legal`/`legal`/`LEGAL `/`Lgl` all mean the same thing (note the LEGAL variant has a trailing space) | 2026-06-20 | 8,985 rows, 23 files (06-20 → 07-12) | `GROUP BY category` returned 9 values instead of 6 | strip whitespace, map all variants to `Legal` in clean.py | queries filtering `category = 'Legal'` on raw data miss 27% of Legal rows |
-| 2 | A header row got ingested as a data row | n/a — single row, can't trace to one source file | 1 row | `category`, `company_name`, `scrape_date` all equal their own column name on that row | drop any row where those 3 columns match their own name | small on its own, but would throw off entity resolution and every category count |
-| 3 | Phone numbers arrive in 8+ formats | 2026-06-01 | all 245,169 rows | sampled distinct phone strings by hand | strip extensions, strip non-digits, drop a leading 1 or 0, require 10 digits left, flag (not drop) anything short | same company's number in two formats double-counts and breaks q1/q5 |
-| 4 | `source_url` column shows up 3.5 weeks into the dataset with no warning | 2026-06-24 | 19 of 42 files have it; the other 121,717 rows don't | ingestion loader flagged it as an unexpected column | kept it, treat pre-06-24 nulls as expected rather than a defect | fine today, but breaks if it's ever used for dedup/joins — half the rows have nothing to match |
-| 5 | 06-17 has ~1,100 fewer rows than the days around it | 2026-06-17 | 1 file — 4,488 rows vs ~5,500-5,900 on 06-16/06-18 | eyeballing the daily row-count breakdown | loaded as-is — not padding it out with fabricated rows | week-over-week trend around that date will look artificially low; worth asking the data owner about it |
-| 6 | Went looking for the classic "nan"/"none"/"null" string-instead-of-empty problem | — | 0 rows | queried every column for literal `nan`/`none`/`null`/`n/a` — none exist in this dataset | left the defensive check in clean.py anyway, costs nothing | none right now — would matter silently if a future export starts doing this |
-| 7 | 2,426 malformed emails | 2026-06-01 | 2,426 rows (~1%) | anything missing `@` or `.` gets flagged | marked invalid, not dropped | low — email isn't used in q1-q5, but still worth knowing about |
+| 1 | Category labels inconsistent — `Legal`/`legal`/`LEGAL`/`Lgl` all mean the same thing. `LEGAL` also has a trailing space. | 2026-06-20 | 8,985 rows, 23 files | `GROUP BY category` returned 9 values instead of 6 | Strip whitespace, map all variants to `Legal` in clean.py | Queries on raw data miss 27% of Legal rows |
+| 2 | A header row got ingested as a data row | Can't trace to one file | 1 row | `category`, `company_name`, `scrape_date` all equal their own column name | Drop any row where those 3 fields match their column name | Small on its own but throws off entity resolution and category counts |
+| 3 | Phone numbers arrive in 8+ formats | 2026-06-01 | All 245,169 rows | Sampled distinct phone strings | Strip extensions first, then non-digits, drop a leading 1 or 0, require exactly 10 digits, flag anything that doesn't make it | Same number in two formats double-counts and breaks q1 and q5 |
+| 4 | `source_url` appeared 3.5 weeks in with no warning | 2026-06-24 | 19 of 42 files have it, 121,717 rows don't | Ingestion flagged it as an unexpected column | Kept it, pre-06-24 nulls treated as expected | Fine today, breaks if it's ever used for dedup — half the rows have nothing to match on |
+| 5 | June 17 has ~1,100 fewer rows than surrounding days | 2026-06-17 | 1 file — 4,488 rows vs ~5,500-5,900 on either side | Eyeballing the daily row count breakdown | Loaded as-is, not padding with fabricated rows | Week-over-week trend around that date looks artificially low |
+| 6 | Checked for "nan"/"none"/"null" strings stored instead of empty — none found | — | 0 rows | Queried every column directly against the raw table | Left the defensive check in clean.py anyway, costs nothing | None right now, would matter silently if a future export starts doing this |
+| 7 | 2,426 malformed emails | 2026-06-01 | 2,426 rows (~1%) | Anything missing `@` or `.` gets flagged | Marked invalid, not dropped | Low — email isn't used in q1-q5 |
+| 8 | `-` used as a city placeholder instead of leaving it empty | 2026-06-01 | Multiple rows | Spotted in dim_location output | Added `-` to the null string list in clean.py | Would be counted as a real city without the fix |
 
-### 8 — "-" used as placeholder for unknown city values
+---
 
-- **First seen:** 2026-06-01
-- **Scope:** Multiple rows across the dataset
-- **How detected:** Noticed in dim_location output — city column contained literal "-"
-- **Pipeline handling:** "-" added to null string list in clean.py, treated as NULL
-- **Downstream risk:** Location grouping would treat "-" as a real city, inflating location counts
+A couple of things worth calling out from digging into issues 3 and 6.
 
-A couple of things that came out of digging into #3 and #6 that are worth calling out on their own:
+On phones — once extensions and punctuation are stripped, every number
+lands on either 10 or 11 digits, nothing else. Of the 11-digit ones,
+85,744 start with 1 (US country code) and 7,371 start with 0. Both
+cases clean down to 10 digits, which is why the cleaning step comes
+out at 100% valid. That felt too clean to trust at first so I checked
+the actual digit-length distribution rather than just take the number
+at face value.
 
-Once the extensions and punctuation are stripped off, every phone number in this dataset lands on either 10 or 11 digits — nothing shorter, nothing longer. Of the 11-digit ones, most (85,744) start with a `1`, which is just the US country code. But a chunk of them (7,371) start with `0` instead — same idea, just a different leading digit to drop. Both cases resolve cleanly to 10 digits, which is why the phone cleaning step comes out at 100% valid. That felt too clean to trust at first, so I checked the actual digit-length distribution rather than take the 100% number at face value.
-
-For #6, I'd actually expected to find literal `"nan"` strings somewhere, since `safe_read_csv` reads everything as `dtype=str` and pandas has a habit of writing `"nan"` into string-typed empty cells. Checked all 11 columns directly against the raw table and came up empty — genuinely clean on this front. Kept the check in the code anyway since it's a one-line safeguard against a real failure mode, just not one that showed up this time.
+On the nan strings — I expected to find some. The ingestion script
+reads everything as dtype=str and pandas has a habit of writing "nan"
+into empty string cells. Checked all 11 columns against the raw table
+and came up empty. Kept the check in the code anyway since it's a
+one-liner and protects against a real failure mode, just not one that
+showed up this time.
