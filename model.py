@@ -2,8 +2,7 @@
 Stage 4 - star schema + the five required queries.
 
 Builds dim_date / dim_category / dim_entity / dim_location / fact_scrape in
-scrape.duckdb from clean_scrape + entity_map, then runs q1-q5 and writes each
-one out as a CSV.
+scrape.duckdb from clean_scrape + entity_map
 """
 
 import duckdb
