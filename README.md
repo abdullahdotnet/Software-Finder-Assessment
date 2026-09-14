@@ -14,13 +14,6 @@ pip install -r requirements.txt
 python -c "import duckdb, pandas; print(duckdb.__version__)"
 ```
 
-Before running anything, make sure these three vendor-supplied inputs are sitting in
-the project root (they're gitignored, so they don't come with the clone):
-
-- `daily/` — the 42 `scrape_YYYY-MM-DD.csv` files
-- `vendor_reference.csv`
-- `README_DATA.txt`
-
 ## Running the full pipeline
 
 Run these in order — each stage reads what the previous one wrote to `scrape.duckdb`:
