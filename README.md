@@ -48,25 +48,6 @@ Covers the 3 transforms most likely to break something downstream if wrong:
 mapping breaks every query that groups by category), and `extract_domain` (drives
 entity resolution's domain-matching pass).
 
-## Where everything ends up
-
-| Output | Produced by |
-|---|---|
-| `scrape.duckdb` (`raw_scrape`, `clean_scrape`, `entity_map`, `dim_*`, `fact_scrape`) | ingest → model |
-| `entity_map.csv` | entity_resolution.py |
-| `q1_daily_unique_phones.csv` … `q5_weekly_change.csv` | queries.py |
-| `DQ_REPORT.md` | data-quality findings from exploring the raw data |
-| `SCALE_UP.md` | production scale-up decisions |
-| `QUESTIONS.md` | open questions for the data owner |
-| `decsion_logs.md` | why the pipeline is built the way it is |
 
 `explore.ipynb`, `ddl_test.ipynb`, and `queries_test.ipynb` are scratch notebooks from
-building this — not part of the pipeline itself.
-
-## Known gaps
-
-- `vendor_reference.csv` isn't consumed anywhere yet — nothing in the pipeline
-  cross-checks entity resolution against it.
-- Entity resolution's domain and fuzzy-name matching tiers exist and run, but every
-  row in this dataset has a phone number, so those tiers never actually get exercised
-  in practice — only phone-based matching has real data behind it.
+building this not part of the pipeline itself.
