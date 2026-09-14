@@ -15,10 +15,10 @@ from datetime import datetime
 
 # CONFIG
 
-DAILY_DIR = Path("daily")          # folder containing the 42 CSV files
-DB_PATH = "scrape.duckdb"          # output DuckDB database
-LOG_DIR = Path("logs")             # folder for log files
-LOG_FILE = LOG_DIR / "ingest.log"
+daily_dir = Path("daily")          # folder containing the 42 CSV files
+db_path = "scrape.duckdb"          # output DuckDB database
+log_dir = Path("logs")             # folder for log files
+log_file = log_dir / "ingest.log"
 
 
 EXPECTED_COLUMNS = [
@@ -36,13 +36,13 @@ EXPECTED_COLUMNS = [
 
 # LOGGING SETUP
 
-LOG_DIR.mkdir(exist_ok=True)
+log_dir.mkdir(exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.FileHandler(log_file, encoding="utf-8"),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -53,15 +53,11 @@ log = logging.getLogger(__name__)
 # HELPER FUNCTIONS
 
 def extract_date_from_filename(filepath: Path) -> str | None:
-    """
-    Pull the scrape date out of the filename.
-    Expected format: scrape_2026-06-01.csv  →  '2026-06-01'
-    Returns None if the filename doesn't match the expected pattern.
-    """
-    name = filepath.stem  # 'scrape_2026-06-01'
+
+    name = filepath.stem
     parts = name.split("_", 1)
     if len(parts) == 2:
-        return parts[1]  # '2026-06-01'
+        return parts[1]
     return None
 
 
@@ -73,7 +69,7 @@ def safe_read_csv(filepath: Path) -> pd.DataFrame | None:
         try:
             df = pd.read_csv(
                 filepath,
-                dtype=str,           # read everything as string - clean later
+                dtype=str,           # read everything as string
                 encoding=encoding,
                 on_bad_lines="warn", # skip malformed rows but keep going
                 skip_blank_lines=True,
@@ -87,7 +83,6 @@ def safe_read_csv(filepath: Path) -> pd.DataFrame | None:
             return df
 
         except UnicodeDecodeError:
-            # Try the next encoding
             continue
         except pd.errors.EmptyDataError:
             log.warning(f"[EMPTY FILE] {filepath.name} - file has no content at all")
@@ -102,7 +97,7 @@ def safe_read_csv(filepath: Path) -> pd.DataFrame | None:
 
 def normalise_columns(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
 
-    # Clean up column names
+    # Clean column names
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
     actual_cols = set(df.columns)
@@ -123,14 +118,7 @@ def normalise_columns(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
 
 
 def add_metadata(df: pd.DataFrame, filepath: Path, file_date: str | None) -> pd.DataFrame:
-    """
-    Add two metadata columns to every row:
-      - _source_file : which CSV file this row came from
-      - _file_date   : date extracted from the filename
 
-    Also: if scrape_date column is completely empty/missing,
-    fill it from the filename date (best effort).
-    """
     df["_source_file"] = filepath.name
     df["_file_date"] = file_date
 
@@ -153,17 +141,17 @@ def add_metadata(df: pd.DataFrame, filepath: Path, file_date: str | None) -> pd.
 def run_ingestion():
     log.info("=" * 60)
     log.info("INGESTION START")
-    log.info(f"Looking for CSV files in: {DAILY_DIR.resolve()}")
-    log.info(f"Output database: {DB_PATH}")
+    log.info(f"Looking for CSV files in: {daily_dir.resolve()}")
+    log.info(f"Output database: {db_path}")
     log.info("=" * 60)
 
     # 1. Find all CSV files
-    if not DAILY_DIR.exists():
-        log.error(f"daily/ folder not found at {DAILY_DIR.resolve()}")
+    if not daily_dir.exists():
+        log.error(f"daily/ folder not found at {daily_dir.resolve()}")
         log.error("Make sure you run this script from your project root folder.")
         sys.exit(1)
 
-    csv_files = sorted(DAILY_DIR.glob("*.csv"))
+    csv_files = sorted(daily_dir.glob("*.csv"))
 
     if not csv_files:
         log.error("No CSV files found in daily/ folder.")
@@ -217,9 +205,9 @@ def run_ingestion():
             log.info(f"  {col:<20} {null_count:>6} nulls  ({pct:.1f}%)")
 
     # 5. Write to DuckDB
-    log.info(f"Writing to DuckDB: {DB_PATH}")
+    log.info(f"Writing to DuckDB: {db_path}")
 
-    con = duckdb.connect(DB_PATH)
+    con = duckdb.connect(db_path)
 
     # Drop and recreate table so re-runs are safe
     con.execute("DROP TABLE IF EXISTS raw_scrape")
@@ -247,12 +235,11 @@ def run_ingestion():
     log.info(f"\n{sample.to_string()}")
 
     con.close()
-
-    log.info("=" * 60)
+    log.info("=====================")
     log.info("INGESTION COMPLETE")
-    log.info(f"Database saved to : {DB_PATH}")
-    log.info(f"Log saved to      : {LOG_FILE}")
-    log.info("=" * 60)
+    log.info(f"Database saved to : {db_path}")
+    log.info(f"Log saved to      : {log_file}")
+
 
 
 
