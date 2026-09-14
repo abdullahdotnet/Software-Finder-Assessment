@@ -187,9 +187,9 @@ def run_cleaning():
     log.info(f"wrote {db_count:,} rows to clean_scrape")
     con.close()
 
-    log.info("=" * 60)
+    log.info("===================")
     log.info("CLEANING COMPLETE")
-    log.info("=" * 60)
+    log.info("===================")
 
 
 if __name__ == "__main__":

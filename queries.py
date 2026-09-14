@@ -146,9 +146,9 @@ def run_model():
         log.info(f"{df.head(3).to_string()}")
 
     con.close()
-    log.info("=" * 60)
+    log.info("===================")
     log.info("QUERIES COMPLETE")
-    log.info("=" * 60)
+    log.info("===================")
 
 
 if __name__ == "__main__":
