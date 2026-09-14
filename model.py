@@ -41,7 +41,10 @@ from clean_scrape
 where scrape_date is not null
 order by date_id;
 
-
+create or replace table dim_category as
+select row_number() over (order by category) as category_id, category as category_name
+from (select distinct category from clean_scrape where category is not null and category != 'Unknown') t
+order by category;
 
 create or replace table dim_entity as
 select entity_id, canonical_name, canonical_phone, categories as all_categories, n_raw_rows, first_seen

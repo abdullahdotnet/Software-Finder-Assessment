@@ -191,9 +191,8 @@ def run_ingestion():
 
         df = normalise_columns(df, filepath)
         df = add_metadata(df, filepath, file_date)
-        print(df.head())
+        all_frames.append(df)
         files_ok += 1
-    print(all_frames)
 
     log.info("-" * 60)
     log.info(f"Files loaded successfully : {files_ok}")
