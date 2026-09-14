@@ -12,6 +12,14 @@
 | 6 | Went looking for the classic "nan"/"none"/"null" string-instead-of-empty problem | — | 0 rows | queried every column for literal `nan`/`none`/`null`/`n/a` — none exist in this dataset | left the defensive check in clean.py anyway, costs nothing | none right now — would matter silently if a future export starts doing this |
 | 7 | 2,426 malformed emails | 2026-06-01 | 2,426 rows (~1%) | anything missing `@` or `.` gets flagged | marked invalid, not dropped | low — email isn't used in q1-q5, but still worth knowing about |
 
+### 8 — "-" used as placeholder for unknown city values
+
+- **First seen:** 2026-06-01
+- **Scope:** Multiple rows across the dataset
+- **How detected:** Noticed in dim_location output — city column contained literal "-"
+- **Pipeline handling:** "-" added to null string list in clean.py, treated as NULL
+- **Downstream risk:** Location grouping would treat "-" as a real city, inflating location counts
+
 A couple of things that came out of digging into #3 and #6 that are worth calling out on their own:
 
 Once the extensions and punctuation are stripped off, every phone number in this dataset lands on either 10 or 11 digits — nothing shorter, nothing longer. Of the 11-digit ones, most (85,744) start with a `1`, which is just the US country code. But a chunk of them (7,371) start with `0` instead — same idea, just a different leading digit to drop. Both cases resolve cleanly to 10 digits, which is why the phone cleaning step comes out at 100% valid. That felt too clean to trust at first, so I checked the actual digit-length distribution rather than take the 100% number at face value.

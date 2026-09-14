@@ -9,5 +9,6 @@ README_DATA.txt
 # Generated outputs (recreated by running the pipeline)
 scrape.duckdb
 logs/
+scrape.duckdb.wal
 
 de-assessment-candidate-brief-1-.pdf.pdf

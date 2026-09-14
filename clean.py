@@ -26,7 +26,7 @@ CATEGORY_MAP = {
     "LMS": "LMS",
 }
 
-NULL_STRINGS = {"nan", "none", "null", "n/a", "na", "nil", ""}
+NULL_STRINGS = {"nan", "none", "null", "n/a", "na", "nil", "","-"}
 
 LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
