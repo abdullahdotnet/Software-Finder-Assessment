@@ -2,9 +2,7 @@
 venv/
 
 
-daily/
-vendor_reference.csv
-README_DATA.txt
+
 
 
 scrape.duckdb
